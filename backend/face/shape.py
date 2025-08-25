@@ -1,91 +1,54 @@
-# backend/face/shape.py
 import cv2
-import sys
-from typing import Tuple
+import dlib
+import numpy as np
 
-# --- Constants for easy configuration and readability ---
-WINDOW_NAME = "Face Shape Recognition"
-FONT = cv2.FONT_HERSHEY_SIMPLEX
-TEXT_COLOR_BGR: Tuple[int, int, int] = (0, 255, 255)  # Yellow in BGR format
-QUIT_KEY = 'q'
-
+# Pre-trained face detector + landmark predictor
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
 class FaceShapeApp:
-    """
-    A class to encapsulate the application's logic for detecting face shapes
-    from a webcam feed.
-    """
-
-    def __init__(self, camera_index: int = 0):
+    ...
+    def _process_frame(self, frame: np.ndarray) -> np.ndarray:
         """
-        Initializes the video capture object.
-
-        Args:
-            camera_index (int): The index of the camera to use.
+        Detects face shape using dlib landmarks and annotates the frame.
         """
-        self.cap = cv2.VideoCapture(camera_index)
-        if not self.cap.isOpened():
-            print(f"Error: Webcam at index {camera_index} is not available or could not be opened.")
-            sys.exit("Application exiting due to camera failure.")
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = detector(gray)
 
-    def _process_frame(self, frame):
-        """
-        Applies face shape recognition logic to a single video frame.
-        (This is currently a placeholder).
+        for face in faces:
+            landmarks = predictor(gray, face)
+            points = np.array([[landmarks.part(n).x, landmarks.part(n).y] for n in range(68)])
 
-        Args:
-            frame: The input video frame from the webcam.
+            # Example metrics:
+            jaw_width = np.linalg.norm(points[0] - points[16])   # left jaw to right jaw
+            cheek_width = np.linalg.norm(points[3] - points[13]) # cheekbone width
+            face_length = np.linalg.norm(points[8] - points[27]) # chin to nose bridge
 
-        Returns:
-            The processed frame with annotations.
-        """
-        # --- TODO: Add your actual face shape recognition model here ---
-        # For example, you might detect facial landmarks and then classify the shape.
-        cv2.putText(
-            img=frame,
-            text="Detecting Shape...",
-            org=(50, 50),
-            fontFace=FONT,
-            fontScale=1,
-            color=TEXT_COLOR_BGR,
-            thickness=2
-        )
+            # --- Basic classification logic ---
+            if abs(jaw_width - cheek_width) < 20:
+                shape = "Square"
+            elif face_length > jaw_width:
+                shape = "Oval"
+            else:
+                shape = "Round"
+
+            # Draw landmarks
+            for (x, y) in points:
+                cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
+
+            # Label the face shape
+            cv2.putText(
+                frame,
+                f"Face Shape: {shape}",
+                (face.left(), face.top() - 10),
+                FONT,
+                0.7,
+                (0, 255, 255),
+                2
+            )
+
+        if not faces:
+            cv2.putText(frame, "No face detected", (50, 50), FONT, 0.8, (0, 0, 255), 2)
+
         return frame
 
-    def run(self) -> None:
-        """
-        Starts the main application loop for video capture, processing, and display.
-        """
-        try:
-            while True:
-                ret, frame = self.cap.read()
-                if not ret:
-                    print("Error: Failed to capture frame from webcam. Exiting.")
-                    break
-
-                processed_frame = self._process_frame(frame)
-                cv2.imshow(WINDOW_NAME, processed_frame)
-
-                # Wait for key press and check if it's the quit key
-                if cv2.waitKey(1) & 0xFF == ord(QUIT_KEY):
-                    print("'q' pressed, shutting down.")
-                    break
-        finally:
-            # This block ensures resources are always released, even if an error occurs.
-            self.cleanup()
-
-    def cleanup(self) -> None:
-        """Releases the camera and destroys all OpenCV windows."""
-        print("Releasing resources...")
-        self.cap.release()
-        cv2.destroyAllWindows()
-
-
-def main():
-    """Main function to create and run the FaceShapeApp."""
-    app = FaceShapeApp(camera_index=0)
-    app.run()
-
-
-if __name__ == '__main__':
-    main()
