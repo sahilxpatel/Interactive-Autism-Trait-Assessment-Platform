@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 10px; }
+        .response { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffcccc; }
+        .success { background: #ccffcc; }
+    </style>
+</head>
+<body>
+    <h1>Game API Test</h1>
+    
+    <h2>Start Games</h2>
+    <button onclick="startGame('color')">Start Color Game</button>
+    <button onclick="startGame('gesture')">Start Gesture Game</button>
+    <button onclick="startGame('shape')">Start Shape Game</button>
+    <button onclick="startGame('emotion')">Start Emotion Game</button>
+    
+    <h2>Stop Games</h2>
+    <button onclick="stopGame('color')">Stop Color Game</button>
+    <button onclick="stopGame('gesture')">Stop Gesture Game</button>
+    <button onclick="stopGame('shape')">Stop Shape Game</button>
+    <button onclick="stopGame('emotion')">Stop Emotion Game</button>
+    <button onclick="stopAllGames()">Stop All Games</button>
+    
+    <h2>Info</h2>
+    <button onclick="getHealth()">Get Health</button>
+    <button onclick="getTestEnv()">Get Test Environment</button>
+    
+    <div id="output"></div>
+
+    <script>
+        function addOutput(data, isError = false) {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = 'response ' + (isError ? 'error' : 'success');
+            div.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function startGame(gameName) {
+            try {
+                const response = await fetch(`/start-${gameName}`, { method: 'POST' });
+                const data = await response.json();
+                addOutput({action: `Start ${gameName}`, ...data}, !response.ok);
+            } catch (error) {
+                addOutput({action: `Start ${gameName}`, error: error.message}, true);
+            }
+        }
+
+        async function stopGame(gameName) {
+            try {
+                const response = await fetch(`/stop-${gameName}`, { method: 'POST' });
+                const data = await response.json();
+                addOutput({action: `Stop ${gameName}`, ...data}, !response.ok);
+            } catch (error) {
+                addOutput({action: `Stop ${gameName}`, error: error.message}, true);
+            }
+        }
+
+        async function stopAllGames() {
+            try {
+                const response = await fetch('/stop-all', { method: 'POST' });
+                const data = await response.json();
+                addOutput({action: 'Stop All', ...data}, !response.ok);
+            } catch (error) {
+                addOutput({action: 'Stop All', error: error.message}, true);
+            }
+        }
+
+        async function getHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                addOutput({action: 'Health Check', ...data});
+            } catch (error) {
+                addOutput({action: 'Health Check', error: error.message}, true);
+            }
+        }
+
+        async function getTestEnv() {
+            try {
+                const response = await fetch('/test-env');
+                const data = await response.json();
+                addOutput({action: 'Test Environment', ...data});
+            } catch (error) {
+                addOutput({action: 'Test Environment', error: error.message}, true);
+            }
+        }
+    </script>
+</body>
+</html>
